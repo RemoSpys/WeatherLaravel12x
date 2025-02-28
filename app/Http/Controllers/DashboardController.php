@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Inertia\Inertia;
+use Throwable;
 
 class DashboardController extends Controller
 {
@@ -14,20 +15,38 @@ class DashboardController extends Controller
      */
     public function __invoke(Request $request)
     {
-        $city = request('city', 'Kuressaare');
+        $city = $request->query('city', 'Kuressaare'); // Use $request->query() for better readability
 
         return Inertia::render('Dashboard', [
-            'weather' => Cache::remember('weather-'.$city, now()->addHour(), fn () => $this->getWeatherData($city)) 
+            'weather' => Cache::remember(
+                'weather-' . $city,
+                now()->addHour(),
+                fn () => $this->getWeatherData($city)
+            ),
+            'radarKey' => config('services.radar_api.client'), // Corrected key to match Vue
         ]);
     }
 
-    private function getWeatherData(string $city)
+    /**
+     * Fetches weather data from OpenWeather API.
+     */
+    private function getWeatherData(string $city): array
     {
-        $response = Http::get('https://api.openweathermap.org/data/2.5/weather', [
-            'q' => $city,
-            'appid' => config('services.open_weather_map.key'),
-        ]);
+        try {
+            $response = Http::get('https://api.openweathermap.org/data/2.5/weather', [
+                'q' => $city,
+                'appid' => config('services.open_weather_map.key'),
+                'units' => 'metric', // Ensures data is returned in Celsius
+            ]);
 
-        return $response->json();
+            if ($response->successful()) {
+                return $response->json();
+            }
+
+            return [];
+        } catch (Throwable $e) {
+            report($e); // Log the error
+            return [];
+        }
     }
 }

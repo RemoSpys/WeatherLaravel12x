@@ -39,4 +39,8 @@ return [
         'key' => env('WEATHER_API_KEY'),
     ],
 
+    'radar_api' => [
+        'client' => env('RADAR_API_CLIENT'),
+        'server' => env('RADAR_API_SERVER'),
+    ],
 ];
